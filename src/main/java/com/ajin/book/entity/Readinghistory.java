@@ -49,5 +49,9 @@ public class Readinghistory implements Serializable {
      */
     private LocalDateTime readTime;
 
-
+    public Readinghistory(Integer userId, Integer bookId, LocalDateTime readTime) {
+        this.userId = userId;
+        this.bookId = bookId;
+        this.readTime = readTime;
+    }
 }

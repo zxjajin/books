@@ -59,5 +59,16 @@ public class Systemlog implements Serializable {
      */
     private String exceptionInfo;
 
+    public Systemlog(Integer userId, LocalDateTime operationTime, String operationContent, String exceptionInfo) {
+        this.userId = userId;
+        this.operationTime = operationTime;
+        this.operationContent = operationContent;
+        this.exceptionInfo = exceptionInfo;
+    }
 
+    public Systemlog(Integer adminId, LocalDateTime operationTime, String operationContent) {
+        this.adminId = adminId;
+        this.operationTime = operationTime;
+        this.operationContent = operationContent;
+    }
 }

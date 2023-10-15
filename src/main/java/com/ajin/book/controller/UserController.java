@@ -1,9 +1,12 @@
 package com.ajin.book.controller;
 
 
+import cn.hutool.crypto.SecureUtil;
 import com.ajin.book.common.Result;
+import com.ajin.book.entity.Systemlog;
 import com.ajin.book.entity.User;
 import com.ajin.book.service.UserService;
+import com.ajin.book.service.impl.SystemlogServiceImpl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -28,6 +31,9 @@ public class UserController {
     @Qualifier("userServiceImpl")
     private UserService service;
 
+    @Autowired
+    private SystemlogServiceImpl systemlogService;
+
     /**
      * 用户登录
      * @param user 用户名和密码
@@ -35,10 +41,13 @@ public class UserController {
      */
     @PostMapping("/login")
     public Result login(@RequestBody User user){
-        User user1 = service.getOne(new QueryWrapper<User>().eq("username", user.getUsername()).eq("password", user.getPassword()));
+        User user1 = service.getOne(new QueryWrapper<User>().eq("username", user.getUsername()).eq("password", SecureUtil.md5(user.getPassword())));
         Assert.notNull(user1,"用户名或密码错误！");
+        Systemlog systemlog = new Systemlog(user1.getUserId(), LocalDateTime.now(), "登录成功", "无异常");
+        systemlogService.save(systemlog);
         return Result.succ(200,"登录成功",user1);
     }
+
 
     /**
      * 注册用户
@@ -50,9 +59,15 @@ public class UserController {
 //        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 //        LocalDateTime dateTime = LocalDateTime.now();
 //        String formattedDateTime = dateTime.format(formatter);
+        Assert.notNull(user,"用户信息不能为空");
+        User u = service.getOne(new QueryWrapper<User>().eq("username", user.getUsername()));
+        Assert.isNull(u,"用户名已经存在");
         user.setCreateTime(LocalDateTime.now());
+        user.setPassword(SecureUtil.md5(user.getPassword()));
         boolean result = service.save(user);
         Assert.isTrue(result,"注册失败！");
+        Systemlog systemlog = new Systemlog(user.getUserId(), LocalDateTime.now(), "注册账号成功", "无异常");
+        systemlogService.save(systemlog);
         return Result.succ(result);
     }
 
@@ -75,8 +90,19 @@ public class UserController {
      */
     @PutMapping("/update")
     public Result update(@RequestBody User user){
+        Assert.notNull(user,"用户信息不能为空");
+        User u = service.getOne(new QueryWrapper<User>().eq("username", user.getUsername()).notIn("user_id",user.getUserId()));
+        Assert.isNull(u,"用户名已经存在");
+        if(user.getPassword()==""){
+            user.setPassword(null);
+        }
+        if(user.getPassword()!=null && user.getPassword()!=""){
+            user.setPassword(SecureUtil.md5(user.getPassword()));
+        }
         boolean result = service.updateById(user);
         Assert.isTrue(result,"修改失败！");
+        Systemlog systemlog = new Systemlog(user.getUserId(), LocalDateTime.now(), "用户修改信息成功", "无异常");
+        systemlogService.save(systemlog);
         return Result.succ(result);
     }
 
@@ -89,6 +115,8 @@ public class UserController {
     public Result delete(@PathVariable("id") Integer id){
         boolean result = service.removeById(id);
         Assert.isTrue(result,"删除失败！");
+        Systemlog systemlog = new Systemlog(id, LocalDateTime.now(), "账号注销了", "无异常");
+        systemlogService.save(systemlog);
         return Result.succ(result);
     }
 

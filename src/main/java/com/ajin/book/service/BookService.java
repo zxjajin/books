@@ -1,5 +1,6 @@
 package com.ajin.book.service;
 
+import com.ajin.book.dto.BookDto;
 import com.ajin.book.entity.Book;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -12,5 +13,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @since 2023-10-09
  */
 public interface BookService extends IService<Book> {
+
+    public BookDto getBookDto(Integer id);
 
 }

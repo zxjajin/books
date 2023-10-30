@@ -13,6 +13,7 @@ import com.ajin.book.service.impl.CategoryServiceImpl;
 import com.ajin.book.service.impl.ReadinghistoryServiceImpl;
 import com.ajin.book.service.impl.SystemlogServiceImpl;
 import com.ajin.book.util.FileUtils;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.ArrayUtils;
@@ -85,7 +86,10 @@ public class BookController {
         Book book = service.getById(id);
         if(book!=null && userId != null){
             Readinghistory readinghistory = new Readinghistory(userId, id, LocalDateTime.now());
-            boolean save = readservice.save(readinghistory);
+            boolean save = readservice.update(readinghistory,new LambdaQueryWrapper<Readinghistory>().eq(Readinghistory::getUserId,userId).eq(Readinghistory::getBookId,id));
+            if(!save){
+                readservice.save(readinghistory);
+            }
         }
         return Result.succ(book);
     }

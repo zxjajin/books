@@ -17,6 +17,10 @@ spring:
   web:
     resources:
       static-locations: classpath:/static/
+  redis:
+    host: 106.55.240.132
+    port: 6379
+    password: 123456
 reggie:
   path: D:\xuexi\book\src\main\resources\static
 #  path: /opt/static/static

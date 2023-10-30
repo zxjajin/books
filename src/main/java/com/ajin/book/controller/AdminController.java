@@ -3,12 +3,19 @@ package com.ajin.book.controller;
 
 import cn.hutool.crypto.SecureUtil;
 import com.ajin.book.common.Result;
+import com.ajin.book.dto.LoginAdmin;
+import com.ajin.book.dto.LoginUser;
 import com.ajin.book.entity.Admin;
 import com.ajin.book.entity.Systemlog;
 import com.ajin.book.service.impl.AdminServiceImpl;
 import com.ajin.book.service.impl.SystemlogServiceImpl;
+import com.ajin.book.util.JwtUtil;
+import com.ajin.book.util.RedisCache;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,6 +26,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * <p>
@@ -34,6 +43,12 @@ public class AdminController {
 
     @Autowired
     private AdminServiceImpl service;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private RedisCache redisCache;
 
     @Autowired
     private SystemlogServiceImpl systemlogService;
@@ -86,11 +101,30 @@ public class AdminController {
      */
     @PostMapping("/login")
     public Result login(@RequestBody Admin admin){
-        Admin admin1 = service.getOne(new QueryWrapper<Admin>().eq("admin_name", admin.getAdminName()).eq("admin_password", SecureUtil.md5(admin.getAdminPassword())));
-        Assert.notNull(admin1,"用户名或密码错误！");
-        Systemlog systemlog = new Systemlog(admin1.getAdminId(), LocalDateTime.now(), "管理员登录成功");
+//        Admin admin1 = service.getOne(new QueryWrapper<Admin>().eq("admin_name", admin.getAdminName()).eq("admin_password", SecureUtil.md5(admin.getAdminPassword())));
+//        Assert.notNull(admin1,"用户名或密码错误！");
+//        Systemlog systemlog = new Systemlog(admin1.getAdminId(), LocalDateTime.now(), "管理员登录成功");
+//        systemlogService.save(systemlog);
+//        return Result.succ(200,"登录成功",admin1);
+
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(admin.getAdminName(),admin.getAdminPassword());
+        Authentication authenticate = authenticationManager.authenticate(authenticationToken);
+        if(Objects.isNull(authenticate)){
+            throw new RuntimeException("用户名或密码错误");
+        }
+        //使用id生成token
+        LoginAdmin loginAdmin = (LoginAdmin) authenticate.getPrincipal();
+        String Id = loginAdmin.getAdmin().getAdminId().toString();
+        String jwt = JwtUtil.createJWT(Id);
+        //authenticate存入redis
+        redisCache.setCacheObject("login:"+Id,loginAdmin);
+        Systemlog systemlog = new Systemlog(loginAdmin.getAdmin().getAdminId(), LocalDateTime.now(), "登录成功", "无异常");
         systemlogService.save(systemlog);
-        return Result.succ(200,"登录成功",admin1);
+        //把token响应给前端
+        HashMap<String,Object> map = new HashMap<>();
+        map.put("token",jwt);
+        map.put("admin",loginAdmin);
+        return Result.succ(200,"登陆成功",map);
     }
 
     /**

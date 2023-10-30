@@ -3,17 +3,28 @@ package com.ajin.book.controller;
 
 import cn.hutool.crypto.SecureUtil;
 import com.ajin.book.common.Result;
+import com.ajin.book.dto.LoginUser;
 import com.ajin.book.entity.Systemlog;
 import com.ajin.book.entity.User;
 import com.ajin.book.service.UserService;
 import com.ajin.book.service.impl.SystemlogServiceImpl;
+import com.ajin.book.service.impl.UserDetailsServiceImpl;
+import com.ajin.book.util.JwtUtil;
+import com.ajin.book.util.RedisCache;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * <p>
@@ -34,6 +45,13 @@ public class UserController {
     @Autowired
     private SystemlogServiceImpl systemlogService;
 
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private RedisCache redisCache;
+
+
     /**
      * 用户登录
      * @param user 用户名和密码
@@ -41,11 +59,37 @@ public class UserController {
      */
     @PostMapping("/login")
     public Result login(@RequestBody User user){
-        User user1 = service.getOne(new QueryWrapper<User>().eq("username", user.getUsername()).eq("password", SecureUtil.md5(user.getPassword())));
-        Assert.notNull(user1,"用户名或密码错误！");
-        Systemlog systemlog = new Systemlog(user1.getUserId(), LocalDateTime.now(), "登录成功", "无异常");
+//        User user1 = service.getOne(new QueryWrapper<User>().eq("username", user.getUsername()).eq("password", SecureUtil.md5(user.getPassword())));
+//        Assert.notNull(user1,"用户名或密码错误！");
+//        return Result.succ(200,"登录成功",user1);
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getUsername(),user.getPassword());
+        Authentication authenticate = authenticationManager.authenticate(authenticationToken);
+        if(Objects.isNull(authenticate)){
+            throw new RuntimeException("用户名或密码错误");
+        }
+        //使用userid生成token
+        LoginUser loginUser = (LoginUser) authenticate.getPrincipal();
+        String userId = loginUser.getUser().getUserId().toString();
+        String jwt = JwtUtil.createJWT(userId);
+        //authenticate存入redis
+        redisCache.setCacheObject("login:"+userId,loginUser);
+        Systemlog systemlog = new Systemlog(loginUser.getUser().getUserId(), LocalDateTime.now(), "登录成功", "无异常");
         systemlogService.save(systemlog);
-        return Result.succ(200,"登录成功",user1);
+        //把token响应给前端
+        HashMap<String,Object> map = new HashMap<>();
+        map.put("token",jwt);
+        map.put("user",loginUser);
+        return Result.succ(200,"登陆成功",map);
+    }
+
+
+    @GetMapping("/logout")
+    public Result logout() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        LoginUser loginUser = (LoginUser) authentication.getPrincipal();
+        Integer userid = loginUser.getUser().getUserId();
+        redisCache.deleteObject("login:"+userid);
+        return Result.succ("退出成功");
     }
 
 
@@ -79,6 +123,7 @@ public class UserController {
     @GetMapping("/{id}")
     public Result get(@PathVariable(name = "id") Integer id){
         User user = service.getById(id);
+//        System.out.println(authenticationManager);
         Assert.notNull(user,"用户不存在！");
         return Result.succ(user);
     }

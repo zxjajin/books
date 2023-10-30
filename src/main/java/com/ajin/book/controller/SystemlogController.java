@@ -54,7 +54,7 @@ public class SystemlogController {
         for(Systemlog systemlog:list){
             SystemlogDto systemlogDto = new SystemlogDto();
             BeanUtils.copyProperties(systemlog,systemlogDto);
-            if(!StringUtils.isEmpty(systemlog.getAdminId())){
+            if(systemlog.getAdminId()!=null && systemlog.getAdminId()>0){
                 Admin admin = adminService.getById(systemlog.getAdminId());
                 systemlogDto.setUsername(admin.getAdminName());
             }else {

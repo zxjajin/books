@@ -118,7 +118,7 @@ public class AdminController {
         String jwt = JwtUtil.createJWT(Id);
         //authenticate存入redis
         redisCache.setCacheObject("admin:"+Id,loginAdmin);
-        Systemlog systemlog = new Systemlog(loginAdmin.getAdmin().getAdminId(), LocalDateTime.now(), "登录成功", "无异常");
+        Systemlog systemlog = new Systemlog(loginAdmin.getAdmin().getAdminId(), LocalDateTime.now(), "登录成功");
         systemlogService.save(systemlog);
         //把token响应给前端
         HashMap<String,Object> map = new HashMap<>();
@@ -197,6 +197,8 @@ public class AdminController {
     @GetMapping("/logout/{id}")
     public Result logout(@PathVariable("id") Integer adminId) {
         redisCache.deleteObject("admin:"+adminId);
+        Systemlog systemlog = new Systemlog(adminId, LocalDateTime.now(), "退出登录");
+        systemlogService.save(systemlog);
         return Result.succ("退出成功");
     }
 

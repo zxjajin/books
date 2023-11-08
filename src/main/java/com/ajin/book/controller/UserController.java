@@ -89,6 +89,8 @@ public class UserController {
 //        LoginUser loginUser = (LoginUser) authentication.getPrincipal();
 //        Integer userid = loginUser.getUser().getUserId();
         redisCache.deleteObject("login:"+userid);
+        Systemlog systemlog = new Systemlog(userid, LocalDateTime.now(), "退出登录", "无异常");
+        systemlogService.save(systemlog);
         return Result.succ("退出成功");
     }
 

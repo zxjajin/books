@@ -83,11 +83,11 @@ public class UserController {
     }
 
 
-    @GetMapping("/logout")
-    public Result logout() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        LoginUser loginUser = (LoginUser) authentication.getPrincipal();
-        Integer userid = loginUser.getUser().getUserId();
+    @GetMapping("/logout/{id}")
+    public Result logout(@PathVariable("id") Integer userid) {
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        LoginUser loginUser = (LoginUser) authentication.getPrincipal();
+//        Integer userid = loginUser.getUser().getUserId();
         redisCache.deleteObject("login:"+userid);
         return Result.succ("退出成功");
     }

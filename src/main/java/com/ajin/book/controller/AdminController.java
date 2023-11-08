@@ -117,7 +117,7 @@ public class AdminController {
         String Id = loginAdmin.getAdmin().getAdminId().toString();
         String jwt = JwtUtil.createJWT(Id);
         //authenticate存入redis
-        redisCache.setCacheObject("login:"+Id,loginAdmin);
+        redisCache.setCacheObject("admin:"+Id,loginAdmin);
         Systemlog systemlog = new Systemlog(loginAdmin.getAdmin().getAdminId(), LocalDateTime.now(), "登录成功", "无异常");
         systemlogService.save(systemlog);
         //把token响应给前端
@@ -192,6 +192,12 @@ public class AdminController {
         boolean result = service.removeById(id);
         Assert.isTrue(result,"删除失败！");
         return Result.succ(result);
+    }
+
+    @GetMapping("/logout/{id}")
+    public Result logout(@PathVariable("id") Integer adminId) {
+        redisCache.deleteObject("admin:"+adminId);
+        return Result.succ("退出成功");
     }
 
 }
